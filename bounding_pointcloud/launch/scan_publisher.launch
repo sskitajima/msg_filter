@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+  <node pkg="bounding_pointcloud" type="ScanPublisher_node" name="ScanPublisher1" args="/scan1 1 1.8" output="screen"/>
+
+  <node pkg="bounding_pointcloud" type="ScanPublisher_node" name="ScanPublisehr2" args="/scan2 2 0.8"/>
+
+
+</launch>

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<library path="lib/libbounding_pointcloud">
+<!--
+  <class name="plugin_lecture/plugin_nodelet_talker"
+     type="plugin_lecture::plugin_nodelet_talker"
+     base_class_type="nodelet::Nodelet">
+    <description>
+    </description>
+  </class>
+-->
+  <class name="bounding_pointcloud/plugin_nodelet_listener"
+     type="bounding_pointcloud::plugin_nodelet_listener"
+     base_class_type="nodelet::Nodelet">
+    <description>
+    </description>
+  </class>
+</library>
