@@ -14,18 +14,20 @@
   - ApproximateTimeSynchronizerの挙動を確かめるためにlaserscanのトピックをパブリッシュさせるテスト用のノード
 - debug_node
   - 特定のトピックをサブスクライブし、そのトピックのヘッダをprintするノード
-
 - nodelet
   - nodelet_test.launchで起動。データセットのヘッダの時刻が数年前で合わないので、現在時刻になおしてパブリッシュするノード
   - rosbagを--clockで再生し、rosparam set /use_sim_time trueとすることで時刻の書き換えを不要にできる。
+- nodelet/point_cloud_xyzrgb
+  - rosのパッケージdepth_image_procの改良
+  - boundingbox, image, depth_image, camera_infoの情報を物体が検出されたときの点群のみを選んでパブリッシュする。
 
 ## 使いかた
 
 - roscore
 - rosbag play -l  [dataset_name] --clock
   - rosparam set /use_sim_time true
-- roslaunch darknet_ros darknet_ros.launch image:=/camera/republish/rgb/image_color
-- rosrun bounding_pointcloud synchronizer_noide
+- roslaunch bounding_pointcloud bounding_pointcloud.launch
+- roslaunch bounding_pointcloud nodelet_test.launch
 
 ## 今後の方針
 
