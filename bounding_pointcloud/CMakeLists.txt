@@ -12,11 +12,27 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   message_filters
   darknet_ros
+  darknet_ros_msgs
   pluginlib
   nodelet
   pcl_ros
   bounding_pointcloud_msgs
+  image_transport
+  cv_bridge
+  eigen_conversions
+  image_geometry
+  tf2
+  tf2_ros
 )
+
+find_package(Boost REQUIRED)
+find_package(Eigen3 QUIET)
+if(NOT EIGEN3_FOUND)
+  find_package(Eigen REQUIRED)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN_INCLUDE_DIRS})
+endif()
+
+find_package(OpenCV REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -123,11 +139,14 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${BOOST_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
   src/nodelets/Nodelet.cpp
+  src/nodelets/point_cloud_xyzrgb.cpp
 )
 
 ## Add cmake target dependencies of the library
@@ -177,6 +196,10 @@ target_link_libraries(ScanPublisher_node
 )
 
 target_link_libraries(debug_node
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
 )
 

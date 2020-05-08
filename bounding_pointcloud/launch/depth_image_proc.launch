@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!--launch depth_image_proc point_cloud_xyzrgb-->
+<launch>
+  <arg name="manager_name" default="depth_image_proc_nodelet_manager" />
+  <arg name="manager_threads" default="4" />
+
+  <node pkg="nodelet" type="nodelet" name="$(arg manager_name)" args="manager" output="screen">
+    <param name="num_worker_threads" value="$(arg manager_threads)" />
+  </node>
+
+  <node pkg="nodelet" type="nodelet" name="node_loader1"
+        args="load depth_image_proc/point_cloud_xyzrgb $(arg manager_name)" >
+    <remap from="rgb/camera_info" to="/camera/rgb/camera_info" />
+    <remap from="rgb/image_rect_color" to="/camera/rgb/image_color" />
+    <remap from="depth_registered/image_rect" to="/camera/depth/image" />
+  </node> 
+
+</launch>
