@@ -1,10 +1,12 @@
 #include "ros/ros.h"
 #include "std_msgs/Header.h"
 #include "sensor_msgs/Image.h"
+#include "sensor_msgs/CameraInfo.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "darknet_ros_msgs/BoundingBoxes.h"
 
 #include <map>
+#include <vector>
 
 using namespace std;
 
@@ -16,28 +18,32 @@ private:
     ros::Subscriber img_sub2;
     ros::Subscriber pc_sub;
     ros::Subscriber bbox_sub;
+    ros::Subscriber info_sub;
     // ros::Subscriber img_sub;
     // ros::Subscriber img_sub;
 
     const char* img_sub1_topic_;
     const char* bbox_sub_topic_;
     const char* pc_sub_topic_;
+    const char* info_sub_topic_;
 
     // トピック名をキーにして各トピックの受信回数を保持
     std::map<const char*, uint32_t> topic_map;
 
 
 public:
-    DebugNode(const char* img_sub1_topic, const char* bbox_sub_topic, const char* pc_sub_topic)
-    : img_sub1_topic_(img_sub1_topic), bbox_sub_topic_(bbox_sub_topic), pc_sub_topic_(pc_sub_topic)
+    DebugNode(const char* img_sub1_topic, const char* bbox_sub_topic, const char* pc_sub_topic, const char* info_sub_topic)
+    : img_sub1_topic_(img_sub1_topic), bbox_sub_topic_(bbox_sub_topic), pc_sub_topic_(pc_sub_topic), info_sub_topic_(info_sub_topic)
     {
         img_sub1 = nh.subscribe(img_sub1_topic_, 100, &DebugNode::img_sub1_callback, this);
         bbox_sub = nh.subscribe(bbox_sub_topic_, 100, &DebugNode::bbox_sub_callback, this);
         pc_sub = nh.subscribe(pc_sub_topic_, 100, &DebugNode::pc_sub_callback, this);
+        info_sub = nh.subscribe(info_sub_topic, 100, &DebugNode::info_sub_callback, this);
 
         topic_map[img_sub1_topic_] = 0;
         topic_map[bbox_sub_topic_] = 0;
         topic_map[pc_sub_topic_] = 0;
+        topic_map[info_sub_topic_] = 0;
     }
 
     ~DebugNode()
@@ -60,10 +66,15 @@ public:
         printHeader(msg.header, pc_sub_topic_);
     }
 
+    void info_sub_callback(const sensor_msgs::CameraInfo& msg)
+    {
+        printHeader(msg.header, info_sub_topic_);
+    }
+
     void printHeader(const std_msgs::Header &header, const char* topic_name)
     {
         topic_map[topic_name] += 1;
-        cout << "topic: " << img_sub1_topic_ << " count: " << topic_map[topic_name] << endl;
+        cout << "topic: " << topic_name << " count: " << topic_map[topic_name] << endl;
         std::cout << "header:" << header.stamp <<  " seq: " << header.seq << std::endl;
         std::cout << std::endl;
     }
@@ -76,11 +87,18 @@ int main(int argc, char** argv)
     // if(argc != 4){
     //     cout << "usgage: rosrun bounding_pointcloud debug_node [subsctibe_topic_name] [bbox_topic_name] [pointcloud_topic_name]" << endl;
     // }
-    const char* img_topic_name = "/darknet_ros/detection_image";
+    const char* img_topic_name = "/camera/rgb/image_color";
     const char* bbox_topic_name = "/darknet_ros/bounding_boxes";
     const char* pc_topic_name = "/camera/republish/rgb/points";
+    const char* info_topic_name = "/camera/rgb/camera_info";
 
-    DebugNode node(img_topic_name, bbox_topic_name, pc_topic_name);
+    // vector<const char*> topic_names{img_topic_name,
+    //                                 bbox_topic_name,
+    //                                 pc_topic_name,
+    //                                 info_topic_name
+    //                                 }
+
+    DebugNode node(img_topic_name, bbox_topic_name, pc_topic_name, info_topic_name);
 
     ros::spin();
 

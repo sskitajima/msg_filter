@@ -48,13 +48,11 @@
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <image_geometry/pinhole_camera_model.h>
-#include <bounding_pointcloud/depth_traits.h>
+#include <depth_image_proc/depth_traits.h>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
-#include <darknet_ros_msgs/BoundingBoxes.h>
-
-namespace bounding_pointcloud {
+namespace depth_image_proc {
 
 using namespace message_filters::sync_policies;
 namespace enc = sensor_msgs::image_encodings;
@@ -62,16 +60,12 @@ namespace enc = sensor_msgs::image_encodings;
 class PointCloudXyzrgbNodelet : public nodelet::Nodelet
 {
   ros::NodeHandlePtr rgb_nh_;
-  ros::NodeHandlePtr bbox_nh_;
   boost::shared_ptr<image_transport::ImageTransport> rgb_it_, depth_it_;
-  //boost::shared_pt<darknet_ros_msgs::BoundingBoxes> bbox_it_;
   
   // Subscriptions
   image_transport::SubscriberFilter sub_depth_, sub_rgb_;
   message_filters::Subscriber<sensor_msgs::CameraInfo> sub_info_;
-  message_filters::Subscriber<darknet_ros_msgs::BoundingBoxes> sub_bbox_;
-  // typedef ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo> SyncPolicy;
-  typedef ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo, darknet_ros_msgs::BoundingBoxes> SyncPolicy;
+  typedef ApproximateTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo> SyncPolicy;
   typedef ExactTime<sensor_msgs::Image, sensor_msgs::Image, sensor_msgs::CameraInfo> ExactSyncPolicy;
   typedef message_filters::Synchronizer<SyncPolicy> Synchronizer;
   typedef message_filters::Synchronizer<ExactSyncPolicy> ExactSynchronizer;
@@ -91,15 +85,13 @@ class PointCloudXyzrgbNodelet : public nodelet::Nodelet
 
   void imageCb(const sensor_msgs::ImageConstPtr& depth_msg,
                const sensor_msgs::ImageConstPtr& rgb_msg,
-               const sensor_msgs::CameraInfoConstPtr& info_msg ,
-               const darknet_ros_msgs::BoundingBoxesConstPtr& bbox_msg);
+               const sensor_msgs::CameraInfoConstPtr& info_msg);
 
   template<typename T>
   void convert(const sensor_msgs::ImageConstPtr& depth_msg,
                const sensor_msgs::ImageConstPtr& rgb_msg,
                const PointCloud::Ptr& cloud_msg,
-               int red_offset, int green_offset, int blue_offset, int color_step,
-               const darknet_ros_msgs::BoundingBox& bbox);
+               int red_offset, int green_offset, int blue_offset, int color_step);
 };
 
 void PointCloudXyzrgbNodelet::onInit()
@@ -107,58 +99,47 @@ void PointCloudXyzrgbNodelet::onInit()
   ros::NodeHandle& nh         = getNodeHandle();
   ros::NodeHandle& private_nh = getPrivateNodeHandle();
   rgb_nh_.reset( new ros::NodeHandle(nh, "rgb") );
-  bbox_nh_.reset( new ros::NodeHandle(nh));
   ros::NodeHandle depth_nh(nh, "depth_registered");
   rgb_it_  .reset( new image_transport::ImageTransport(*rgb_nh_) );
   depth_it_.reset( new image_transport::ImageTransport(depth_nh) );
-  //bbox_it_ .reset( new darknet_ros_msgs::BoundingBoxes(*bbox_nh_))
 
   // Read parameters
   int queue_size;
-  private_nh.param("queue_size", queue_size, 10);
+  private_nh.param("queue_size", queue_size, 5);
   bool use_exact_sync;
   private_nh.param("exact_sync", use_exact_sync, false);
 
   // Synchronize inputs. Topic subscriptions happen on demand in the connection callback.
-  // if (use_exact_sync)
-  // {
-  //   exact_sync_.reset( new ExactSynchronizer(ExactSyncPolicy(queue_size), sub_depth_, sub_rgb_, sub_info_) );
-  //   exact_sync_->registerCallback(boost::bind(&PointCloudXyzrgbNodelet::imageCb, this, _1, _2, _3));
-  // }
-  // else
-  // {
-    sync_.reset( new Synchronizer(SyncPolicy(queue_size), sub_depth_, sub_rgb_, sub_info_, sub_bbox_) );
-    sync_->registerCallback(boost::bind(&PointCloudXyzrgbNodelet::imageCb, this, _1, _2, _3, _4));
-    // sync_.reset( new Synchronizer(SyncPolicy(queue_size), sub_depth_, sub_rgb_, sub_info_) );
-    // sync_->registerCallback(boost::bind(&PointCloudXyzrgbNodelet::imageCb, this, _1, _2, _3));
-
-  // }
+  if (use_exact_sync)
+  {
+    exact_sync_.reset( new ExactSynchronizer(ExactSyncPolicy(queue_size), sub_depth_, sub_rgb_, sub_info_) );
+    exact_sync_->registerCallback(boost::bind(&PointCloudXyzrgbNodelet::imageCb, this, _1, _2, _3));
+  }
+  else
+  {
+    sync_.reset( new Synchronizer(SyncPolicy(queue_size), sub_depth_, sub_rgb_, sub_info_) );
+    sync_->registerCallback(boost::bind(&PointCloudXyzrgbNodelet::imageCb, this, _1, _2, _3));
+  }
   
   // Monitor whether anyone is subscribed to the output
   ros::SubscriberStatusCallback connect_cb = boost::bind(&PointCloudXyzrgbNodelet::connectCb, this);
   // Make sure we don't enter connectCb() between advertising and assigning to pub_point_cloud_
   boost::lock_guard<boost::mutex> lock(connect_mutex_);
   pub_point_cloud_ = depth_nh.advertise<PointCloud>("points", 1, connect_cb, connect_cb);
-  // pub_point_cloud_ = depth_nh.advertise<PointCloud>("points", 100);
-  
-  NODELET_INFO("initialize finished. broken");
 }
 
 // Handles (un)subscribing when clients (un)subscribe
 void PointCloudXyzrgbNodelet::connectCb()
 {
-  NODELET_INFO("connectCb called.");
   boost::lock_guard<boost::mutex> lock(connect_mutex_);
   if (pub_point_cloud_.getNumSubscribers() == 0)
   {
     sub_depth_.unsubscribe();
     sub_rgb_  .unsubscribe();
     sub_info_ .unsubscribe();
-    sub_bbox_ .unsubscribe();
   }
   else if (!sub_depth_.getSubscriber())
   {
-    NODELET_INFO("!sub_depth.getsubscriber()");
     ros::NodeHandle& private_nh = getPrivateNodeHandle();
     // parameter for depth_image_transport hint
     std::string depth_image_transport_param = "depth_image_transport";
@@ -171,16 +152,13 @@ void PointCloudXyzrgbNodelet::connectCb()
     image_transport::TransportHints hints("raw", ros::TransportHints(), private_nh);
     sub_rgb_  .subscribe(*rgb_it_,   "image_rect_color", 1, hints);
     sub_info_ .subscribe(*rgb_nh_,   "camera_info",      1);
-    sub_bbox_ .subscribe(*bbox_nh_,   "darknet_ros/bounding_boxes", 1);
   }
 }
 
 void PointCloudXyzrgbNodelet::imageCb(const sensor_msgs::ImageConstPtr& depth_msg,
                                       const sensor_msgs::ImageConstPtr& rgb_msg_in,
-                                      const sensor_msgs::CameraInfoConstPtr& info_msg,
-                                      const darknet_ros_msgs::BoundingBoxesConstPtr& bbox_msg)
+                                      const sensor_msgs::CameraInfoConstPtr& info_msg)
 {
-  NODELET_INFO("imageCb called.");
   // Check for bad inputs
   if (depth_msg->header.frame_id != rgb_msg_in->header.frame_id)
   {
@@ -275,49 +253,40 @@ void PointCloudXyzrgbNodelet::imageCb(const sensor_msgs::ImageConstPtr& depth_ms
     color_step   = 3;
   }
 
-  for(int bbox_id=0; bbox_id < bbox_msg->bounding_boxes.size(); bbox_id++)
+  // Allocate new point cloud message
+  PointCloud::Ptr cloud_msg (new PointCloud);
+  cloud_msg->header = depth_msg->header; // Use depth image time stamp
+  cloud_msg->height = depth_msg->height;
+  cloud_msg->width  = depth_msg->width;
+  cloud_msg->is_dense = false;
+  cloud_msg->is_bigendian = false;
+
+  sensor_msgs::PointCloud2Modifier pcd_modifier(*cloud_msg);
+  pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
+
+  if (depth_msg->encoding == enc::TYPE_16UC1)
   {
-      darknet_ros_msgs::BoundingBox bbox = bbox_msg->bounding_boxes[bbox_id];
-      // Allocate new point cloud message
-      PointCloud::Ptr cloud_msg(new PointCloud);
-      cloud_msg->header = depth_msg->header; // Use depth image time stamp
-      cloud_msg->height = depth_msg->height;
-      cloud_msg->width = depth_msg->width;
-      cloud_msg->is_dense = false;
-      cloud_msg->is_bigendian = false;
-
-      sensor_msgs::PointCloud2Modifier pcd_modifier(*cloud_msg);
-      pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
-
-      if (depth_msg->encoding == enc::TYPE_16UC1)
-      {
-          convert<uint16_t>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step, bbox);
-      }
-      else if (depth_msg->encoding == enc::TYPE_32FC1)
-      {
-          convert<float>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step, bbox);
-      }
-      else
-      {
-          NODELET_ERROR_THROTTLE(5, "Depth image has unsupported encoding [%s]", depth_msg->encoding.c_str());
-          return;
-      }
-
-      pub_point_cloud_.publish(cloud_msg);
+    convert<uint16_t>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step);
   }
-  std::cout << std::endl;
+  else if (depth_msg->encoding == enc::TYPE_32FC1)
+  {
+    convert<float>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step);
+  }
+  else
+  {
+    NODELET_ERROR_THROTTLE(5, "Depth image has unsupported encoding [%s]", depth_msg->encoding.c_str());
+    return;
+  }
+
+  pub_point_cloud_.publish (cloud_msg);
 }
 
-// cloud_msgの中に出力が格納されていく
 template<typename T>
 void PointCloudXyzrgbNodelet::convert(const sensor_msgs::ImageConstPtr& depth_msg,
                                       const sensor_msgs::ImageConstPtr& rgb_msg,
                                       const PointCloud::Ptr& cloud_msg,
-                                      int red_offset, int green_offset, int blue_offset, int color_step,
-                                      const darknet_ros_msgs::BoundingBox& bbox)
+                                      int red_offset, int green_offset, int blue_offset, int color_step)
 {
-  NODELET_INFO("convert function start.");
-
   // Use correct principal point from calibration
   float center_x = model_.cx();
   float center_y = model_.cy();
@@ -341,41 +310,37 @@ void PointCloudXyzrgbNodelet::convert(const sensor_msgs::ImageConstPtr& depth_ms
   sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(*cloud_msg, "b");
   sensor_msgs::PointCloud2Iterator<uint8_t> iter_a(*cloud_msg, "a");
 
-  // ここをバウンディングボックスで得られた範囲にする。
-  NODELET_INFO("cloud_msg->height, width: %d %d ",int(cloud_msg->height), int(cloud_msg->width));
-
-  
-  // NODELET_INFO("bbox: %d %d %d %d ", bbox.xmin, bbox.ymin, bbox.xmax, bbox.ymax);
-  for (int v = 0/*bbox.ymin*/; v < cloud_msg->height/*bbox.ymax*/; ++v, depth_row += row_step, rgb += rgb_skip)
+  for (int v = 0; v < int(cloud_msg->height); ++v, depth_row += row_step, rgb += rgb_skip)
   {
-      for (int u = 0/*bbox.xmin*/; u < cloud_msg->width/*bbox.xmax*/; ++u, rgb += color_step, ++iter_x, ++iter_y, ++iter_z, ++iter_a, ++iter_r, ++iter_g, ++iter_b)
+    for (int u = 0; u < int(cloud_msg->width); ++u, rgb += color_step, ++iter_x, ++iter_y, ++iter_z, ++iter_a, ++iter_r, ++iter_g, ++iter_b)
+    {
+      T depth = depth_row[u];
+
+      // Check for invalid measurements
+      if (!DepthTraits<T>::valid(depth))
       {
-          T depth = depth_row[u];
-
-          // Check for invalid measurements
-          if (!DepthTraits<T>::valid(depth))
-          {
-              *iter_x = *iter_y = *iter_z = bad_point;
-          }
-          else
-          {
-              // Fill in XYZ
-              *iter_x = (u - center_x) * depth * constant_x;
-              *iter_y = (v - center_y) * depth * constant_y;
-              *iter_z = DepthTraits<T>::toMeters(depth);
-          }
-
-          // Fill in color
-          *iter_a = 255;
-          *iter_r = rgb[red_offset];
-          *iter_g = rgb[green_offset];
-          *iter_b = rgb[blue_offset];
+        *iter_x = *iter_y = *iter_z = bad_point;
       }
+      else
+      {
+        // Fill in XYZ
+        *iter_x = (u - center_x) * depth * constant_x;
+        *iter_y = (v - center_y) * depth * constant_y;
+        *iter_z = DepthTraits<T>::toMeters(depth);
+      }
+
+      // Fill in color
+      *iter_a = 255;
+      *iter_r = rgb[red_offset];
+      *iter_g = rgb[green_offset];
+      *iter_b = rgb[blue_offset];
+    }
   }
 }
 
-} // namespace bounding_pointcloud
+} // namespace depth_image_proc
 
 // Register as nodelet
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_EXPORT_CLASS(bounding_pointcloud::PointCloudXyzrgbNodelet,nodelet::Nodelet);
+PLUGINLIB_EXPORT_CLASS(depth_image_proc::PointCloudXyzrgbNodelet,nodelet::Nodelet);
+

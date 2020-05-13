@@ -34,8 +34,8 @@ SynchronizerNode::SynchronizerNode()
     sync1.reset(new Sync1(MySyncPolicy1(1000), sub_img, sub_pc));
     sync1->registerCallback(boost::bind(&SynchronizerNode::callback1, this, _1, _2));
 
-    // sync_test.reset(new SyncTest(MySyncPolicyTest(1000), sub_scan1, sub_scan2));
-    // sync_test->registerCallback(boost::bind(&SynchronizerNode::callback_test, this, _1, _2));
+    sync_test.reset(new SyncTest(MySyncPolicyTest(1000), sub_scan1, sub_scan2));
+    sync_test->registerCallback(boost::bind(&SynchronizerNode::callback_test, this, _1, _2));
 
     pub_detected_pc = nh.advertise<sensor_msgs::PointCloud2>(out_pc_name, 100);
 

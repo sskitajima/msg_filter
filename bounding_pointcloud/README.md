@@ -23,10 +23,17 @@
 
 ## 使いかた
 
-- roscore
-- rosbag play -l  [dataset_name] --clock
-  - rosparam set /use_sim_time true
+- ```roscore```
+
+- ```
+  rosparam set /use_sim_time true
+  rosbag play -l  [dataset_name] --clock
+  ```
+  
+  - pointsも含めてあるbagファイルを使う。rgbd_benckmark_toolsのadd_pointclouds_to_bagfile.pyを用いる。pointsがないbagファイルを再生してもなぜか動悸されない
+  
 - roslaunch bounding_pointcloud bounding_pointcloud.launch
+
 - roslaunch bounding_pointcloud nodelet_test.launch
 
 ## 今後の方針
