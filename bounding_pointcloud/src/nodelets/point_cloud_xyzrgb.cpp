@@ -115,7 +115,7 @@ void PointCloudXyzrgbNodelet::onInit()
 
   // Read parameters
   int queue_size;
-  private_nh.param("queue_size", queue_size, 10);
+  private_nh.param("queue_size", queue_size, 100000);
   bool use_exact_sync;
   private_nh.param("exact_sync", use_exact_sync, false);
 
@@ -281,8 +281,15 @@ void PointCloudXyzrgbNodelet::imageCb(const sensor_msgs::ImageConstPtr& depth_ms
       // Allocate new point cloud message
       PointCloud::Ptr cloud_msg(new PointCloud);
       cloud_msg->header = depth_msg->header; // Use depth image time stamp
+
+      /// ここも変える必要あり
       cloud_msg->height = depth_msg->height;
       cloud_msg->width = depth_msg->width;
+
+      // cloud_msg->height = (bbox.xmax - bbox.xmin);
+      // cloud_msg->width = (bbox.ymax - bbox.ymin);
+      ///
+
       cloud_msg->is_dense = false;
       cloud_msg->is_bigendian = false;
 
@@ -309,6 +316,7 @@ void PointCloudXyzrgbNodelet::imageCb(const sensor_msgs::ImageConstPtr& depth_ms
 }
 
 // cloud_msgの中に出力が格納されていく
+// T...uint32_またはfloat
 template<typename T>
 void PointCloudXyzrgbNodelet::convert(const sensor_msgs::ImageConstPtr& depth_msg,
                                       const sensor_msgs::ImageConstPtr& rgb_msg,
@@ -316,13 +324,14 @@ void PointCloudXyzrgbNodelet::convert(const sensor_msgs::ImageConstPtr& depth_ms
                                       int red_offset, int green_offset, int blue_offset, int color_step,
                                       const darknet_ros_msgs::BoundingBox& bbox)
 {
-  NODELET_INFO("convert function start.");
+  // NODELET_INFO("convert function start.");
 
   // Use correct principal point from calibration
   float center_x = model_.cx();
   float center_y = model_.cy();
 
   // Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y)
+  // principal point ... 主点
   double unit_scaling = DepthTraits<T>::toMeters( T(1) );
   float constant_x = unit_scaling / model_.fx();
   float constant_y = unit_scaling / model_.fy();
@@ -345,24 +354,30 @@ void PointCloudXyzrgbNodelet::convert(const sensor_msgs::ImageConstPtr& depth_ms
   NODELET_INFO("cloud_msg->height, width: %d %d ",int(cloud_msg->height), int(cloud_msg->width));
 
   
-  // NODELET_INFO("bbox: %d %d %d %d ", bbox.xmin, bbox.ymin, bbox.xmax, bbox.ymax);
-  for (int v = 0/*bbox.ymin*/; v < cloud_msg->height/*bbox.ymax*/; ++v, depth_row += row_step, rgb += rgb_skip)
+  NODELET_INFO("class: %s, id: %d, bbox: %d %d %d %d ", bbox.Class, bbox.id, bbox.xmin, bbox.ymin, bbox.xmax, bbox.ymax);
+  for (int v = 0 /*bbox.ymin*/; v < depth_msg->height/*cloud_msg->height*/ /*bbox.ymax*/; ++v, depth_row += row_step, rgb += rgb_skip)
   {
-      for (int u = 0/*bbox.xmin*/; u < cloud_msg->width/*bbox.xmax*/; ++u, rgb += color_step, ++iter_x, ++iter_y, ++iter_z, ++iter_a, ++iter_r, ++iter_g, ++iter_b)
+    if( (v>=bbox.xmin) && (v<=bbox.xmax) )
+    {
+
+      for (int u = 0 /*bbox.xmin*/; u < depth_msg->width /*cloud_msg->width*/ /*bbox.xmax*/; ++u, rgb += color_step, ++iter_x, ++iter_y, ++iter_z, ++iter_a, ++iter_r, ++iter_g, ++iter_b)
       {
+        if ((u >= bbox.ymin) && (u <= bbox.ymax))
+        {
+          // NODELET_INFO("v: %d, u: %d", v, u);
           T depth = depth_row[u];
 
           // Check for invalid measurements
           if (!DepthTraits<T>::valid(depth))
           {
-              *iter_x = *iter_y = *iter_z = bad_point;
+            *iter_x = *iter_y = *iter_z = bad_point;
           }
           else
           {
-              // Fill in XYZ
-              *iter_x = (u - center_x) * depth * constant_x;
-              *iter_y = (v - center_y) * depth * constant_y;
-              *iter_z = DepthTraits<T>::toMeters(depth);
+            // Fill in XYZ
+            *iter_x = (u - center_x) * depth * constant_x;
+            *iter_y = (v - center_y) * depth * constant_y;
+            *iter_z = DepthTraits<T>::toMeters(depth);
           }
 
           // Fill in color
@@ -370,7 +385,10 @@ void PointCloudXyzrgbNodelet::convert(const sensor_msgs::ImageConstPtr& depth_ms
           *iter_r = rgb[red_offset];
           *iter_g = rgb[green_offset];
           *iter_b = rgb[blue_offset];
+        }
       }
+
+    }
   }
 }
 
