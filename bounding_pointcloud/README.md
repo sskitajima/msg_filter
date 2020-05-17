@@ -36,6 +36,12 @@
 
 - roslaunch bounding_pointcloud nodelet_test.launch
 
+
+
+
+
+
+
 ## 今後の方針
 
 - 同期が取れることがわかったので、物体検出した点群だけをパブリッシュする
