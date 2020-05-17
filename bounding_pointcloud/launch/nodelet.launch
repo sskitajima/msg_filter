@@ -11,6 +11,7 @@
   <node pkg="nodelet" type="nodelet" name="node_loader"
         args="load bounding_pointcloud/ImageCropExample $(arg manager_name)" >
       <remap from="/rgb/image_color" to="camera/rgb/image_color" />
+      <remap from="/depth/image" to="camera/depth/image" />
   </node>
   
   <!--
