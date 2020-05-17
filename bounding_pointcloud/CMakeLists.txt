@@ -147,6 +147,7 @@ include_directories(
 add_library(${PROJECT_NAME}
   src/nodelets/Nodelet.cpp
   src/nodelets/point_cloud_xyzrgb.cpp
+  src/nodelets/ImageCropExample.cpp
 )
 
 ## Add cmake target dependencies of the library

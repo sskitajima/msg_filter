@@ -23,4 +23,14 @@
       Nodelet to combine registered depth image and RGB image which has bounding box into XYZRGB point cloud.
     </description>
   </class>
+
+
+  <class name="bounding_pointcloud/ImageCropExample"
+     type="bounding_pointcloud::ImageCropExample"
+     base_class_type="nodelet::Nodelet">
+    <description>
+    </description>
+  </class>
+
+
 </library>

@@ -97,8 +97,6 @@ int main(int argc, char** argv)
     // TimeSynchronizer<sensor_msgs::Image, sensor_msgs::PointCloud2, darknet_ros_msgs::BoundingBoxes> sync3(image_sub, pc_sub, bbox_sub, 10000000);
     // sync3.registerCallback(boost::bind(&bounding_pointcloud::callback3, _1, _2, _3));
 
-
-
     ros::Subscriber sub_img = nh.subscribe(image_topic_name, 100, bounding_pointcloud::debugCallback1);
     ros::Subscriber sub_point = nh.subscribe(point_topic_name, 100, bounding_pointcloud::debugCallback2);
     ros::Subscriber sub_bbox = nh.subscribe(bbox_topic_name, 100, bounding_pointcloud::debugCallback3);

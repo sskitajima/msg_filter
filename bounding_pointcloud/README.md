@@ -32,18 +32,7 @@
   
   - pointsも含めてあるbagファイルを使う。rgbd_benckmark_toolsのadd_pointclouds_to_bagfile.pyを用いる。pointsがないbagファイルを再生してもなぜか動悸されない
   
-- roslaunch bounding_pointcloud bounding_pointcloud.launch
+- ```roslaunch bounding_pointcloud bounding_pointcloud.launch```
 
-- roslaunch bounding_pointcloud nodelet_test.launch
-
-
-
-
-
-
-
-## 今後の方針
-
-- 同期が取れることがわかったので、物体検出した点群だけをパブリッシュする
-- 同期を取ってパブリッシュするノードをnodeletにする。
-- オクトマップに表現してみる。
+  - 関連するモジュールをすべて起動する
+  - 中身を見ればわかるが、launchフォルダ内のここのlauchを起動している。

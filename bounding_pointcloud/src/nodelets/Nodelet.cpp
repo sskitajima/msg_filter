@@ -40,12 +40,12 @@ private:
   ros::Publisher cam_info_pub;
   ros::Publisher pc_pub;
 
-  const char *img_sub_topic = "/camera/rgb/image_color";
-  const char *img_pub_topic = "/camera/republish/rgb/image_color";
-  const char *cam_info_sub_topic = "/camera/rgb/camera_info";
-  const char *cam_info_pub_topic = "/camera/republish/rgb/camera_info";
-  const char *pc_sub_topic = "/camera/rgb/points";
-  const char *pc_pub_topic = "/camera/republish/rgb/points";
+  const char* img_sub_topic = "/camera/rgb/image_color";
+  const char* img_pub_topic = "/camera/republish/rgb/image_color";
+  const char* cam_info_sub_topic = "/camera/rgb/camera_info";
+  const char* cam_info_pub_topic = "/camera/republish/rgb/camera_info";
+  const char* pc_sub_topic = "/camera/rgb/points";
+  const char* pc_pub_topic = "/camera/republish/rgb/points";
 
   sensor_msgs::Image img;
   sensor_msgs::CameraInfo cam_info;

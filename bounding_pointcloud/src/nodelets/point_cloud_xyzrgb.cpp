@@ -283,25 +283,30 @@ void PointCloudXyzrgbNodelet::imageCb(const sensor_msgs::ImageConstPtr& depth_ms
       cloud_msg->header = depth_msg->header; // Use depth image time stamp
 
       /// ここも変える必要あり
-      cloud_msg->height = depth_msg->height;
-      cloud_msg->width = depth_msg->width;
+      // cloud_msg->height = depth_msg->height;
+      // cloud_msg->width = depth_msg->width;
 
-      // cloud_msg->height = (bbox.xmax - bbox.xmin);
-      // cloud_msg->width = (bbox.ymax - bbox.ymin);
+      cloud_msg->height = (bbox.xmax - bbox.xmin);
+      cloud_msg->width = (bbox.ymax - bbox.ymin);
+      NODELET_INFO("cloud_msg height: %d, width: %d", cloud_msg->height, cloud_msg->width);
       ///
 
       cloud_msg->is_dense = false;
       cloud_msg->is_bigendian = false;
 
       sensor_msgs::PointCloud2Modifier pcd_modifier(*cloud_msg);
-      pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
+      pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");   // xyzrgbのフィールドにcloud_msgを登録する。
 
+      // uint16_t で、チャンネルが1つ-> 16UC1
       if (depth_msg->encoding == enc::TYPE_16UC1)
       {
+          NODELET_INFO("encoding: TYPE_16_UC1");
           convert<uint16_t>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step, bbox);
       }
+      // float32で、チャンネルが1つ->32FC1
       else if (depth_msg->encoding == enc::TYPE_32FC1)
       {
+          NODELET_INFO("encoding: TYPE_32_FC1");
           convert<float>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step, bbox);
       }
       else

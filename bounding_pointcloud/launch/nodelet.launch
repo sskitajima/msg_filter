@@ -7,18 +7,19 @@
     <param name="num_worker_threads" value="$(arg manager_threads)" />
   </node>
 
-  <!--
-  <node pkg="nodelet" type="nodelet" name="node_loader0"
-        args="load plugin_lecture/plugin_nodelet_talker $(arg manager_name)" >
-    <remap from="chatter" to="chatter_alt" />
-    <param name="content" value="hello2" />
+  
+  <node pkg="nodelet" type="nodelet" name="node_loader"
+        args="load bounding_pointcloud/ImageCropExample $(arg manager_name)" >
+      <remap from="/rgb/image_color" to="camera/rgb/image_color" />
   </node>
-  --> 
-
-  <!-- <node pkg="nodelet" type="nodelet" name="node_loader1"
+  
+  <!--
+  <node pkg="nodelet" type="nodelet" name="node_loader1"
         args="load bounding_pointcloud/plugin_nodelet_listener $(arg manager_name)" >
     <remap from="chatter" to="chatter_alt" />
-  </node>  -->
+  </node>  
+  -->
+
 
     <node pkg="nodelet" type="nodelet" name="node_loader2"
         args="load bounding_pointcloud/point_cloud_xyzrgb $(arg manager_name)" >
