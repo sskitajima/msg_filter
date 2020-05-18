@@ -16,6 +16,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 
+#include <boost/timer.hpp>
+
 #include <darknet_ros_msgs/BoundingBoxes.h>
 
 namespace bounding_pointcloud {
@@ -53,8 +55,8 @@ void ImageCropExample::onInit()
   ros::NodeHandle& private_nh = getPrivateNodeHandle();
   ros::NodeHandle depth_nh(nh, "depth_registered");
 
-  rgb_nh_  .reset( new ros::NodeHandle(nh, "rgb") );
-  depth_nh_.reset( new ros::NodeHandle(nh, "depth") );
+  rgb_nh_  .reset( new ros::NodeHandle(nh, "camera/rgb") );
+  depth_nh_.reset( new ros::NodeHandle(nh, "camera/depth") );
   bbox_nh_ .reset( new ros::NodeHandle(nh) );
 
   rgb_it_  .reset( new image_transport::ImageTransport(*rgb_nh_) );
@@ -63,7 +65,8 @@ void ImageCropExample::onInit()
   
   // Read parameters
   int queue_size;
-  nh.param("queue_size", queue_size, 3);
+  //　TODO: 調整する必要あり
+  nh.param("queue_size", queue_size, 10);
 
   sync_.reset(new Synchronizer(SyncPolicy(queue_size), sub_rgb_, sub_depth_, sub_bbox_));
   sync_->registerCallback(boost::bind(&ImageCropExample::crop, this, _1, _2, _3));
@@ -77,8 +80,8 @@ void ImageCropExample::onInit()
   sub_depth_.subscribe(*depth_it_, "image"      , 1, hints_depth);
   sub_bbox_ .subscribe(*bbox_nh_ , "darknet_ros/bounding_boxes", 1);
 
-  pub_crop_img = nh.advertise<sensor_msgs::Image>("/camera/rgb/croped/image_color", 100);
-  NODELET_INFO("initialize finished. example");
+  pub_crop_img = nh.advertise<sensor_msgs::Image>("/camera/rgb/image_color_croped", 100);
+  NODELET_INFO("ImageCropExample: initialize finished.");
 }
 
 void ImageCropExample::crop(const sensor_msgs::ImageConstPtr& rgb_msg,
@@ -86,30 +89,31 @@ void ImageCropExample::crop(const sensor_msgs::ImageConstPtr& rgb_msg,
                             const darknet_ros_msgs::BoundingBoxesConstPtr& bbox_msg)
 {
     NODELET_INFO("crop start.");
-
-    // クロップ処理を行う
-    cv_bridge::CvImagePtr cv_ptr;
-  
-    NODELET_INFO("encoding_type:");
-    if(rgb_msg->encoding == enc::BGR8)
+    for (int bbox_id = 0; bbox_id < bbox_msg->bounding_boxes.size(); bbox_id++)
     {
-      std::cout << rgb_msg->encoding << std::endl;
+      // boost::timer t;
 
-      try
+      // クロップ処理を行う
+      cv_bridge::CvImagePtr cv_ptr;
+
+      NODELET_INFO("encoding_type:");
+      if (rgb_msg->encoding == enc::BGR8)
       {
+        std::cout << rgb_msg->encoding << std::endl;
+
+        try
+        {
           cv_ptr = cv_bridge::toCvCopy(rgb_msg, enc::BGR8);
           std::cout << "try success" << std::endl;
-      }
-      catch (cv_bridge::Exception& ex)
-      {
+        }
+        catch (cv_bridge::Exception &ex)
+        {
           ROS_ERROR("error");
           exit(-1);
-      }
+        }
 
-      cv::Mat &mat = cv_ptr->image;
+        cv::Mat &mat = cv_ptr->image;
 
-      for(int bbox_id=0; bbox_id < bbox_msg->bounding_boxes.size(); bbox_id++)
-      {
         darknet_ros_msgs::BoundingBox bbox = bbox_msg->bounding_boxes[bbox_id];
 
         for (int i = bbox.ymin; i < bbox.ymax; i++)
@@ -126,8 +130,9 @@ void ImageCropExample::crop(const sensor_msgs::ImageConstPtr& rgb_msg,
         cv::rectangle(cv_ptr->image, cv::Point(bbox.xmin, bbox.ymin), cv::Point(bbox.xmax, bbox.ymax), cv::Scalar(0, 0, 255), 3, 4);
         // cv::imshow("RGB image", cv_ptr->image);
         pub_crop_img.publish(cv_ptr->toImageMsg());
+        // NODELET_INFO("time for making and publishing one image: %d", t.elapsed());
       }
-     
+
     }
 
     NODELET_INFO("crop end");
