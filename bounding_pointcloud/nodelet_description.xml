@@ -25,8 +25,8 @@
   </class>
 
 
-  <class name="bounding_pointcloud/ImageCropExample"
-     type="bounding_pointcloud::ImageCropExample"
+  <class name="bounding_pointcloud/ImageCrop"
+     type="bounding_pointcloud::ImageCrop"
      base_class_type="nodelet::Nodelet">
     <description>
     </description>

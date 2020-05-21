@@ -1,24 +1,39 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="rvizconfig" default="$(find bounding_pointcloud)/rviz/rviz.rviz"/> 
+    <arg name="darknet" default="true"/>
+    <arg name="orb" default="true"/>
+    <arg name="octomap" default="true"/>
+    <arg name="nodelet" default="true"/>
+    <arg name="rviz" default="true"/>
 
     <!-- darknet_ros -->
-    <include file="$(find bounding_pointcloud)/launch/darknet_ros.launch">
-    </include>
+    <group if="$(arg darknet)">
+      <include file="$(find bounding_pointcloud)/launch/darknet_ros.launch">
+      </include>
+    </group>
 
     <!--orb_slam2 -->
-    <include file="$(find bounding_pointcloud)/launch/orb_slam2_mydataset.launch">
-    </include>
+    <group if="$(arg orb)">
+      <include file="$(find bounding_pointcloud)/launch/orb_slam2_mydataset.launch">
+      </include>
+    </group>
 
     <!--octomap -->
-    <include file="$(find bounding_pointcloud)/launch/octomap_mapping_orbslam_tum.launch">
-    </include>
+    <group if="$(arg octomap)">
+      <include file="$(find bounding_pointcloud)/launch/octomap_mapping_orbslam_tum.launch">
+      </include>
+    </group>
 
 
     <!-- nodelet -->
-    <include file="$(find bounding_pointcloud)/launch/nodelet.launch">
-    </include>
+    <group if="$(arg nodelet)">
+      <include file="$(find bounding_pointcloud)/launch/nodelet.launch">
+      </include>
+    </group>
 
-    <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true"/>
+    <group if="$(arg rviz)">
+      <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rvizconfig)" required="true"/>
+    </group>
 
 </launch>

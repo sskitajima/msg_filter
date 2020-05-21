@@ -1,15 +1,15 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="manager_name" default="nodelet_manager" />
-  <arg name="manager_threads" default="2" />
+  <arg name="manager_threads" default="4" />
 
   <node pkg="nodelet" type="nodelet" name="$(arg manager_name)" args="manager" output="screen">
     <param name="num_worker_threads" value="$(arg manager_threads)" />
   </node>
 
   
-  <node pkg="nodelet" type="nodelet" name="node_loader"
-        args="load bounding_pointcloud/ImageCropExample $(arg manager_name)" >
+  <node pkg="nodelet" type="nodelet" name="ImageCrop"
+        args="load bounding_pointcloud/ImageCrop $(arg manager_name)" >
       <!--
       <remap from="/rgb/image_color" to="camera/rgb/image_color" />
       <remap from="/depth/image" to="camera/depth/image" />
@@ -17,18 +17,18 @@
   </node>
   
   <!--
-  <node pkg="nodelet" type="nodelet" name="node_loader1"
+  <node pkg="nodelet" type="nodelet" name="plugin_nodelet_listener"
         args="load bounding_pointcloud/plugin_nodelet_listener $(arg manager_name)" >
     <remap from="chatter" to="chatter_alt" />
   </node>  
   -->
 
-<!--
-    <node pkg="nodelet" type="nodelet" name="node_loader2"
+
+    <!-- <node pkg="nodelet" type="nodelet" name="point_cloud_xyzrgb"
         args="load bounding_pointcloud/point_cloud_xyzrgb $(arg manager_name)" >
     <remap from="rgb/camera_info" to="/camera/rgb/camera_info" />
     <remap from="rgb/image_rect_color" to="/camera/rgb/image_color" />
     <remap from="depth_registered/image_rect" to="/camera/depth/image" />
-  </node> 
--->
+  </node>  -->
+
 </launch>
