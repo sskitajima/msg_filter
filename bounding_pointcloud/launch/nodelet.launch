@@ -15,6 +15,10 @@
       <remap from="/depth/image" to="camera/depth/image" />
       -->
   </node>
+
+  <node pkg="nodelet" type="nodelet" name="CropImagePointCloud"
+          args="load bounding_pointcloud/CropImagePointCloud $(arg manager_name)">
+  </node>
   
   <!--
   <node pkg="nodelet" type="nodelet" name="plugin_nodelet_listener"

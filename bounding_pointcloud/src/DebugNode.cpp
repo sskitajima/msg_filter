@@ -17,6 +17,41 @@
 using namespace std;
 namespace enc = sensor_msgs::image_encodings;
 
+// トピック名をキーにして各トピックの受信回数を保持
+std::map<const char *, uint32_t> topic_map;
+
+void printHeader(const std_msgs::Header &header, const char *topic_name)
+{
+    topic_map[topic_name] += 1;
+    cout << "topic: " << topic_name << " count: " << topic_map[topic_name] << endl;
+    std::cout << "header:" << header.stamp << " seq: " << header.seq << std::endl;
+    std::cout << std::endl;
+}
+
+
+template<class T>
+class MySubscriber
+{
+private:
+    // ros::NodeHandle nh_;
+    ros::Subscriber sub_;
+    const char* topic_name_;
+
+public:
+    MySubscriber(ros::NodeHandle& nh, const char* topic_name)
+    : topic_name_(topic_name)
+    {
+        sub_ = nh.subscribe(topic_name_, 100, &MySubscriber::Callback, this);
+        topic_map[topic_name_] = 0;
+    }
+
+    void Callback(const T& msg)
+    {
+        std::cout << "MySubscriber" << std::endl;
+        printHeader(msg.header, topic_name_);
+    }
+};
+
 class DebugNode
 {
 private:
@@ -27,32 +62,33 @@ private:
     ros::Subscriber bbox_sub;
     ros::Subscriber info_sub;
     ros::Subscriber cropimg_sub;
-    // ros::Subscriber img_sub;
-    // ros::Subscriber img_sub;
+
+
+    MySubscriber<bounding_pointcloud_msgs::CropImage> cropImg_sub;
+    MySubscriber<sensor_msgs::PointCloud2> crop_points_sub;
 
     const char* img_sub1_topic_;
     const char* bbox_sub_topic_;
     const char* pc_sub_topic_;
     const char* info_sub_topic_;
-    const char* cropimg_sub_topic_;
-
-    // トピック名をキーにして各トピックの受信回数を保持
-    std::map<const char*, uint32_t> topic_map;
+    const char* croping_sub_topic_;
 
 
 public:
-    DebugNode(const char* img_sub1_topic, const char* bbox_sub_topic, const char* pc_sub_topic, const char* info_sub_topic, const char* cropimg_sub_topic)
+    DebugNode(const char* img_sub1_topic, const char* bbox_sub_topic, const char* pc_sub_topic, const char* info_sub_topic, const char* croping_sub_topic)
     : img_sub1_topic_(img_sub1_topic), 
       bbox_sub_topic_(bbox_sub_topic), 
       pc_sub_topic_(pc_sub_topic), 
       info_sub_topic_(info_sub_topic),
-      cropimg_sub_topic_(cropimg_sub_topic)
+      croping_sub_topic_(croping_sub_topic),
+      cropImg_sub(nh, croping_sub_topic),
+      crop_points_sub(nh, "/points_croped/points")
     {
         // img_sub1 = nh.subscribe(img_sub1_topic_, 100, &DebugNode::img_sub1_callback, this);
         // bbox_sub = nh.subscribe(bbox_sub_topic_, 100, &DebugNode::bbox_sub_callback, this);
         // pc_sub = nh.subscribe(pc_sub_topic_, 100, &DebugNode::pc_sub_callback, this);
         // info_sub = nh.subscribe(info_sub_topic, 100, &DebugNode::info_sub_callback, this);
-        cropimg_sub = nh.subscribe(cropimg_sub_topic_, 100, &DebugNode::cropimg_sub_callback, this);
+        // cropimg_sub = nh.subscribe(cropimg_sub_topic_, 100, &DebugNode::cropimg_sub_callback, this);
 
         topic_map[img_sub1_topic_] = 0;
         topic_map[bbox_sub_topic_] = 0;
@@ -88,33 +124,25 @@ public:
     void cropimg_sub_callback(const bounding_pointcloud_msgs::CropImage& img_msg)
     {
         cout << "===CropImage subscribe===" << endl;
-        cv_bridge::CvImagePtr cv_rgb_ptr, cv_depth_ptr;
-        try
-        {
-            cv_rgb_ptr = cv_bridge::toCvCopy(img_msg.rgb_image, enc::BGR8);
-            cv_depth_ptr = cv_bridge::toCvCopy(img_msg.depth_image, enc::TYPE_32FC1);
-        }
-        catch (cv_bridge::Exception &ex)
-        {
-            ROS_ERROR("error");
-            exit(-1);
-        }
+        // cv_bridge::CvImagePtr cv_rgb_ptr, cv_depth_ptr;
+        // try
+        // {
+        //     cv_rgb_ptr = cv_bridge::toCvCopy(img_msg.rgb_image, enc::BGR8);
+        //     cv_depth_ptr = cv_bridge::toCvCopy(img_msg.depth_image, enc::TYPE_32FC1);
+        // }
+        // catch (cv_bridge::Exception &ex)
+        // {
+        //     ROS_ERROR("error");
+        //     exit(-1);
+        // }
         
-        cv::Mat dst;
-        cv::normalize(cv_depth_ptr->image, dst, 0, 1, cv::NORM_MINMAX);
-        cv::imshow("rgb image", cv_rgb_ptr->image);
-        cv::imshow("depth image", dst);
-        cv::waitKey(2);
+        // cv::Mat dst;
+        // cv::normalize(cv_depth_ptr->image, dst, 0, 1, cv::NORM_MINMAX);
+        // cv::imshow("rgb image", cv_rgb_ptr->image);
+        // cv::imshow("depth image", dst);
+        // cv::waitKey(2);
 
-        cout << endl;
-    }
-
-    void printHeader(const std_msgs::Header &header, const char* topic_name)
-    {
-        topic_map[topic_name] += 1;
-        cout << "topic: " << topic_name << " count: " << topic_map[topic_name] << endl;
-        std::cout << "header:" << header.stamp <<  " seq: " << header.seq << std::endl;
-        std::cout << std::endl;
+        // cout << endl;
     }
 
 };

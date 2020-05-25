@@ -64,6 +64,7 @@ class ImageCrop : public nodelet::Nodelet
   const int crop_interval = 5;
   const std::string save_class_name = "book";
   const std::string save_image_dir = "/home/kitajima/workspace/save_image/";
+  const std::string name_pub_cropImage = "/bounding_pointcloud_msgs/CropImage";
 
 
   virtual void onInit();
@@ -116,7 +117,7 @@ void ImageCrop::onInit()
   cam_info_ptr_ = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(cam_topic_, nh, ros::Duration(3));
 
   // pub_crop_img = nh.advertise<sensor_msgs::Image>("/camera/rgb/croped/image_color", 100);
-  pub_crop_img = nh.advertise<bounding_pointcloud_msgs::CropImage>("/bounding_pointcloud_msgs/CropImage", 100);
+  pub_crop_img = nh.advertise<bounding_pointcloud_msgs::CropImage>(name_pub_cropImage, 100);
   NODELET_INFO("ImageCrop: initialize finished.");
 }
 
@@ -124,7 +125,6 @@ void ImageCrop::cropCallback(const sensor_msgs::ImageConstPtr& rgb_msg,
                             const sensor_msgs::ImageConstPtr& depth_msg,
                             const darknet_ros_msgs::BoundingBoxesConstPtr& bbox_msg)
 {
-
   // crop_interval_count++;
   // if (crop_interval_count % crop_interval == 0)
   // {
@@ -134,7 +134,7 @@ void ImageCrop::cropCallback(const sensor_msgs::ImageConstPtr& rgb_msg,
 
       if ((bbox.probability >= 0.5) && (rgb_msg->encoding == enc::BGR8))
       {
-        NODELET_INFO("callback start.");
+        // NODELET_INFO("ImageCrop::callback start.");
         boost::timer t;
 
         // ヘッダを作る
@@ -148,15 +148,14 @@ void ImageCrop::cropCallback(const sensor_msgs::ImageConstPtr& rgb_msg,
 
         cv_bridge::CvImage crop_rgb_bridge(crop_header, "bgr8", crop_rgb);
         cv_bridge::CvImage crop_depth_bridge(crop_header, "32FC1", crop_depth);
-        cout << "cv bridge " << endl;
         crop_rgb_bridge.toImageMsg();
         crop_depth_bridge.toImageMsg();
         sensor_msgs::ImagePtr crop_rgb_img_ptr = crop_rgb_bridge.toImageMsg();
         sensor_msgs::ImagePtr crop_depth_img_ptr = crop_depth_bridge.toImageMsg();
 
         // CropImage型の変数を作ってパブリッシュ
-        cout << "make CropImage " << endl;
         bounding_pointcloud_msgs::CropImage cropImage;
+        cropImage.header = crop_header;
         cropImage.Class = bbox.Class;
         cropImage.probability = bbox.probability;
 
@@ -166,11 +165,11 @@ void ImageCrop::cropCallback(const sensor_msgs::ImageConstPtr& rgb_msg,
         pub_crop_img.publish(cropImage);
 
 
-        std::cout << "time: " << t.elapsed() << std::endl;
+        // std::cout << "time: " << t.elapsed() << std::endl;
 
-        NODELET_INFO("cropCallback end");
-        std::cout << std::endl
-                  << std::endl;
+        // NODELET_INFO("cropCallback end");
+        // std::cout << std::endl
+        //           << std::endl;
       }
     }
   // }
@@ -182,11 +181,10 @@ cv::Mat ImageCrop::crop(const sensor_msgs::ImageConstPtr& img_msg,
 {
   // 画像をopencvとrosで変換するための変数
   cv_bridge::CvImagePtr cv_ptr;
-  cout << "crop start " << endl;
 
   try
   {
-    cout << "encoding; " << img_msg->encoding << endl;
+    // cout << "encoding; " << img_msg->encoding << endl;
     if (enc::isColor(img_msg->encoding))
       cv_ptr = cv_bridge::toCvCopy(img_msg, enc::BGR8);
     else
@@ -223,7 +221,6 @@ cv::Mat ImageCrop::crop(const sensor_msgs::ImageConstPtr& img_msg,
   // if (bbox.Class == save_class_name)
   //   registerObject(img_msg, bbox, cv_ptr);
 
-  cout << "crop end " << endl;
 
   return crop_img;
 }

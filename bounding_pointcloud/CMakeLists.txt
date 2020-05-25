@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   message_filters
+  geometry_msgs
   darknet_ros
   darknet_ros_msgs
   pluginlib
@@ -179,6 +180,7 @@ add_library(${PROJECT_NAME}
   src/nodelets/point_cloud_xyzrgb.cpp
   src/nodelets/ImageCrop.cpp
   # src/nodelets/ObjectDatabase.cpp
+  src/nodelets/crop_point_cloud.cpp
 )
 
 ## Add cmake target dependencies of the library

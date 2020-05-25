@@ -32,5 +32,12 @@
     </description>
   </class>
 
+  <class name="bounding_pointcloud/CropImagePointCloud"
+     type="bounding_pointcloud::CropImagePointCloud"
+     base_class_type="nodelet::Nodelet">
+    <description>
+    Nodelet to make pointcloud from croped rgb and depth image which is detected by yolo sdarknet.
+    </description>
+  </class>
 
 </library>
