@@ -272,41 +272,40 @@ void CropImagePointCloud::imageCb(const bounding_pointcloud::CropImageConstPtr& 
     color_step   = 3;
   }
 
+  // Allocate new point cloud message
+  PointCloud::Ptr cloud_msg(new PointCloud);
+  cloud_msg->header = depth_msg->header; // Use depth image time stamp
 
-      // Allocate new point cloud message
-      PointCloud::Ptr cloud_msg(new PointCloud);
-      cloud_msg->header = depth_msg->header; // Use depth image time stamp
+  cloud_msg->height = depth_msg->height;
+  cloud_msg->width = depth_msg->width;
+  NODELET_INFO("cloud_msg height: %d, width: %d", cloud_msg->height, cloud_msg->width);
 
-      cloud_msg->height = depth_msg->height;
-      cloud_msg->width = depth_msg->width;
-      NODELET_INFO("cloud_msg height: %d, width: %d", cloud_msg->height, cloud_msg->width);
+  cloud_msg->is_dense = false;
+  cloud_msg->is_bigendian = false;
 
-      cloud_msg->is_dense = false;
-      cloud_msg->is_bigendian = false;
+  sensor_msgs::PointCloud2Modifier pcd_modifier(*cloud_msg);
+  pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "rgb"); // xyzrgbのフィールドにcloud_msgを登録する。
 
-      sensor_msgs::PointCloud2Modifier pcd_modifier(*cloud_msg);
-      pcd_modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");   // xyzrgbのフィールドにcloud_msgを登録する。
+  // uint16_t で、チャンネルが1つ-> 16UC1
+  if (depth_msg->encoding == enc::TYPE_16UC1)
+  {
+    NODELET_INFO("encoding: TYPE_16_UC1");
+    convert<uint16_t>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step);
+  }
+  // float32で、チャンネルが1つ->32FC1
+  else if (depth_msg->encoding == enc::TYPE_32FC1)
+  {
+    NODELET_INFO("encoding: TYPE_32_FC1");
+    convert<float>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step);
+  }
+  else
+  {
+    NODELET_ERROR_THROTTLE(5, "Depth image has unsupported encoding [%s]", depth_msg->encoding.c_str());
+    return;
+  }
 
-      // uint16_t で、チャンネルが1つ-> 16UC1
-      if (depth_msg->encoding == enc::TYPE_16UC1)
-      {
-          NODELET_INFO("encoding: TYPE_16_UC1");
-          convert<uint16_t>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step);
-      }
-      // float32で、チャンネルが1つ->32FC1
-      else if (depth_msg->encoding == enc::TYPE_32FC1)
-      {
-          NODELET_INFO("encoding: TYPE_32_FC1");
-          convert<float>(depth_msg, rgb_msg, cloud_msg, red_offset, green_offset, blue_offset, color_step);
-      }
-      else
-      {
-          NODELET_ERROR_THROTTLE(5, "Depth image has unsupported encoding [%s]", depth_msg->encoding.c_str());
-          return;
-      }
+  pub_point_cloud_.publish(cloud_msg);
 
-      pub_point_cloud_.publish(cloud_msg);
-  
   std::cout << std::endl;
 }
 
@@ -318,7 +317,7 @@ void CropImagePointCloud::convert(const sensor_msgs::ImageConstPtr& depth_msg,
                                       const PointCloud::Ptr& cloud_msg,
                                       int red_offset, int green_offset, int blue_offset, int color_step)
 {
-  // NODELET_INFO("convert function start.");
+  NODELET_INFO("convert function start.");
 
   // Use correct principal point from calibration
   float center_x = model_.cx();

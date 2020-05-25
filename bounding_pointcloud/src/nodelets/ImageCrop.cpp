@@ -165,6 +165,32 @@ void ImageCrop::cropCallback(const sensor_msgs::ImageConstPtr& rgb_msg,
         pub_crop_img.publish(cropImage);
 
 
+        ///// TODO ////
+        // camera_infoを作って同時刻のheaderでpublishする
+        // header: 
+        //   seq: 421
+        //   stamp: 
+        //     secs: 1341847994
+        //     nsecs: 769802817
+        //   frame_id: "/openni_rgb_optical_frame"
+        // height: 480
+        // width: 640
+        // distortion_model: "plumb_bob"
+        // D: [0.0263704224826013, -0.10008645619921, 0.00313758409632316, 0.00242072236844001, 0.0]
+        // K: [537.960321985614, 0.0, 319.183641033155, 0.0, 539.597659163239, 247.053820358135, 0.0, 0.0, 1.0]
+        // R: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+        // P: [535.43310546875, 0.0, 320.106652814575, 0.0, 0.0, 539.212524414062, 247.632132204719, 0.0, 0.0, 0.0, 1.0, 0.0]
+        // binning_x: 0
+        // binning_y: 0
+        // roi: 
+        //   x_offset: 0
+        //   y_offset: 0
+        //   height: 0
+        //   width: 0
+        //   do_rectify: False
+
+
+
         // std::cout << "time: " << t.elapsed() << std::endl;
 
         // NODELET_INFO("cropCallback end");
