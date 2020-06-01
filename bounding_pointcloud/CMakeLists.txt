@@ -191,7 +191,9 @@ add_library(${PROJECT_NAME}
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_node src/main.cpp)
+add_executable(${PROJECT_NAME}_node 
+src/main.cpp
+)
 
 add_executable(synchronizer_node 
 src/synchronizer_main.cpp
@@ -200,6 +202,14 @@ src/SynchronizerNode.cpp
 
 add_executable(ScanPublisher_node 
 src/ScanPublisher.cpp
+)
+
+add_executable(imageSaver_node
+src/ImageSaver.cpp
+)
+
+add_executable(imagePublisher_node
+src/ImagePublisher.cpp
 )
 
 add_executable(debug_node 
@@ -226,6 +236,14 @@ target_link_libraries(synchronizer_node
 )
 
 target_link_libraries(ScanPublisher_node
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(imageSaver_node
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(imagePublisher_node
   ${catkin_LIBRARIES}
 )
 
