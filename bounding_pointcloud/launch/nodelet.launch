@@ -8,31 +8,38 @@
   </node>
 
   
-  <node pkg="nodelet" type="nodelet" name="ImageCrop"
+  <!-- <node pkg="nodelet" type="nodelet" name="ImageCrop"
         args="load bounding_pointcloud/ImageCrop $(arg manager_name)" >
-      <!--
+      
       <remap from="/rgb/image_color" to="camera/rgb/image_color" />
       <remap from="/depth/image" to="camera/depth/image" />
       -->
-  </node>
-
-  <node pkg="nodelet" type="nodelet" name="CropImagePointCloud"
-          args="load bounding_pointcloud/CropImagePointCloud $(arg manager_name)">
-  </node>
-  
   <!--
-  <node pkg="nodelet" type="nodelet" name="plugin_nodelet_listener"
+  </node> -->
+
+  <!-- <node pkg="nodelet" type="nodelet" name="CropImagePointCloud"
+          args="load bounding_pointcloud/CropImagePointCloud $(arg manager_name)">
+  </node> -->
+  
+  
+  <!-- <node pkg="nodelet" type="nodelet" name="plugin_nodelet_listener"
         args="load bounding_pointcloud/plugin_nodelet_listener $(arg manager_name)" >
     <remap from="chatter" to="chatter_alt" />
+  </node>   -->
+ 
+
+    <node pkg="nodelet" type="nodelet" name="PointsListener"
+        args="load bounding_pointcloud/PointsListener $(arg manager_name)" >
   </node>  
-  -->
 
 
-    <!-- <node pkg="nodelet" type="nodelet" name="point_cloud_xyzrgb"
-        args="load bounding_pointcloud/point_cloud_xyzrgb $(arg manager_name)" >
+    <node pkg="nodelet" type="nodelet" name="point_cloud_xyzrgb"
+        args="load depth_image_proc/point_cloud_xyzrgb $(arg manager_name)" >
+        <!-- ?? argsは namespace/nodelet_descriptionのnameに合わせる ?? -->
+     
     <remap from="rgb/camera_info" to="/camera/rgb/camera_info" />
     <remap from="rgb/image_rect_color" to="/camera/rgb/image_color" />
     <remap from="depth_registered/image_rect" to="/camera/depth/image" />
-  </node>  -->
+  </node> 
 
 </launch>

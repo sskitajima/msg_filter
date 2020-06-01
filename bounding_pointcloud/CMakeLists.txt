@@ -177,10 +177,12 @@ include_directories(
 # Declare a C++ library
 add_library(${PROJECT_NAME}
   src/nodelets/Nodelet.cpp
-  src/nodelets/point_cloud_xyzrgb.cpp
-  src/nodelets/ImageCrop.cpp
+  # src/nodelets/point_cloud_xyzrgb.cpp
+  # src/nodelets/ImageCrop.cpp
   # src/nodelets/ObjectDatabase.cpp
-  src/nodelets/crop_point_cloud.cpp
+  # src/nodelets/crop_point_cloud.cpp
+  src/nodelets/point_cloud_xyzrgb_orig.cpp
+  src/nodelets/PointsListener.cpp
 )
 
 ## Add cmake target dependencies of the library

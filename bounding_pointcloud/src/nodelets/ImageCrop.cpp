@@ -51,12 +51,14 @@ class ImageCrop : public nodelet::Nodelet
 
   // Publications
   ros::Publisher pub_crop_img;
+  ros::Publisher pub_cam_info;
 
   // Object Detection Database
   std::vector<bounding_pointcloud::DetectionData*> database;
 
   // topic name
-  const std::string cam_topic_ = "/camera/rgb/camera_info";
+  const std::string sub_cam_topic_ = "/camera/rgb/camera_info";
+  const std::string pub_cam_topic_ = "/"
 
   // save image param
   int counter=0;
@@ -114,10 +116,11 @@ void ImageCrop::onInit()
   sub_bbox_ .subscribe(*bbox_nh_ , "darknet_ros/bounding_boxes", 1);
 
   // wait for camera info topic and register once
-  cam_info_ptr_ = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(cam_topic_, nh, ros::Duration(3));
+  cam_info_ptr_ = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(sub_cam_topic_, nh, ros::Duration(3));
 
   // pub_crop_img = nh.advertise<sensor_msgs::Image>("/camera/rgb/croped/image_color", 100);
   pub_crop_img = nh.advertise<bounding_pointcloud_msgs::CropImage>(name_pub_cropImage, 100);
+  pub_cam_info = nh.advertise<sensor_msgs::CameraInfo>(,100)
   NODELET_INFO("ImageCrop: initialize finished.");
 }
 
@@ -165,29 +168,10 @@ void ImageCrop::cropCallback(const sensor_msgs::ImageConstPtr& rgb_msg,
         pub_crop_img.publish(cropImage);
 
 
-        ///// TODO ////
-        // camera_infoを作って同時刻のheaderでpublishする
-        // header: 
-        //   seq: 421
-        //   stamp: 
-        //     secs: 1341847994
-        //     nsecs: 769802817
-        //   frame_id: "/openni_rgb_optical_frame"
-        // height: 480
-        // width: 640
-        // distortion_model: "plumb_bob"
-        // D: [0.0263704224826013, -0.10008645619921, 0.00313758409632316, 0.00242072236844001, 0.0]
-        // K: [537.960321985614, 0.0, 319.183641033155, 0.0, 539.597659163239, 247.053820358135, 0.0, 0.0, 1.0]
-        // R: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-        // P: [535.43310546875, 0.0, 320.106652814575, 0.0, 0.0, 539.212524414062, 247.632132204719, 0.0, 0.0, 0.0, 1.0, 0.0]
-        // binning_x: 0
-        // binning_y: 0
-        // roi: 
-        //   x_offset: 0
-        //   y_offset: 0
-        //   height: 0
-        //   width: 0
-        //   do_rectify: False
+
+
+        sensor_msgs::CameraInfo cam_info;
+        make_cam_info(crop_header, cam_info, bbox.xmax - bbox.xmin, bbox.ymax - bbox.ymin);
 
 
 
@@ -269,6 +253,70 @@ void ImageCrop::registerObject(const sensor_msgs::ImageConstPtr& rgb_msg,
 
 void ImageCrop::count_object(){
   std::cout << "num object: " << database.size() << std::endl;
+}
+
+void ImageCrop::make_cam_info(const std_msgs::Header& header, sensor_msgs::CamraInfo& cam_info, int width, int height)
+{
+  ///// TODO ////
+  // camera_infoを作って同時刻のheaderでpublishする
+  // header:
+  //   seq: 421
+  //   stamp:
+  //     secs: 1341847994
+  //     nsecs: 769802817
+  //   frame_id: "/openni_rgb_optical_frame"
+  // height: 480
+  // width: 640
+  // distortion_model: "plumb_bob"
+  // D: [0.0263704224826013, -0.10008645619921, 0.00313758409632316, 0.00242072236844001, 0.0]
+  // K: [537.960321985614, 0.0, 319.183641033155, 0.0, 539.597659163239, 247.053820358135, 0.0, 0.0, 1.0]
+  // R: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+  // P: [535.43310546875, 0.0, 320.106652814575, 0.0, 0.0, 539.212524414062, 247.632132204719, 0.0, 0.0, 0.0, 1.0, 0.0]
+  // binning_x: 0
+  // binning_y: 0
+  // roi:
+  //   x_offset: 0
+  //   y_offset: 0
+  //   height: 0
+  //   width: 0
+  //   do_rectify: False
+
+  cam_info.header = header;
+  cam_info.height = height;
+  cam_info.width = width;
+  cam_info.distortion_model = cam_info_ptr_->distortion_model ;  //  "plumb_bob";
+
+  // The distortion parameters, size depending on the distortion model.
+  // For "plumb_bob", the 5 parameters are: (k1, k2, t1, t2, k3).
+  cam_info.D = cam_info_ptr_->D;          // [0.0263704224826013, -0.10008645619921, 0.00313758409632316, 0.00242072236844001, 0.0];
+  
+  // Intrinsic camera matrix for the raw (distorted) images.
+  //     [fx  0 cx]
+  // K = [ 0 fy cy]
+  //     [ 0  0  1]
+  cam_info.K = cam_info_ptr_->K;          //[537.960321985614, 0.0, 319.183641033155, 0.0, 539.597659163239, 247.053820358135, 0.0, 0.0, 1.0];
+  
+  // Rectification matrix (stereo cameras only)
+  cam_info.R = cam_info_ptr_->R;          // [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0];
+  
+  // Projection/camera matrix
+  //     [fx'  0  cx' Tx]
+  // P = [ 0  fy' cy' Ty]
+  //     [ 0   0   1   0]
+  cam_info.P = cam_info_ptr_->P;          // [535.43310546875, 0.0, 320.106652814575, 0.0, 0.0, 539.212524414062, 247.632132204719, 0.0, 0.0, 0.0, 1.0, 0.0];
+
+
+
+  // #######################################################################
+  // #                      Operational Parameters                         #
+  // #######################################################################
+  // # These define the image region actually captured by the camera       #
+  // # driver. Although they affect the geometry of the output image, they #
+  // # may be changed freely without recalibrating the camera.             #
+  // #######################################################################
+  cam_info.binning_x = cam_info_ptr_->binning_x;          
+  cam_info.binning_y = cam_info_ptr_->binning_y;
+  cam_info.roi = cam_info_ptr_->roi;
 }
 
 

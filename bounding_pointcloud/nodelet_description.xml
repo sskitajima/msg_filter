@@ -16,16 +16,31 @@
   </class>
 
 
-    <class name="bounding_pointcloud/point_cloud_xyzrgb"
+    <!-- <class name="bounding_pointcloud/point_cloud_xyzrgb"
 	 type="bounding_pointcloud::PointCloudXyzrgbNodelet"
 	 base_class_type="nodelet::Nodelet">
     <description>
       Nodelet to combine registered depth image and RGB image which has bounding box into XYZRGB point cloud.
     </description>
+  </class> -->
+
+  <class name="depth_image_proc/point_cloud_xyzrgb"
+	    type="depth_image_proc::PointCloudXyzrgbNodelet"
+	    base_class_type="nodelet::Nodelet">
+    <description>
+      Nodelet to combine registered depth image and RGB image which has bounding box into XYZRGB point cloud.
+    </description>
+  </class>
+
+    <class name="bounding_pointcloud/PointsListener"
+      type="bounding_pointcloud::PointsListener"
+      base_class_type="nodelet::Nodelet">
+    <description>
+    </description>
   </class>
 
 
-  <class name="bounding_pointcloud/ImageCrop"
+  <!-- <class name="bounding_pointcloud/ImageCrop"
      type="bounding_pointcloud::ImageCrop"
      base_class_type="nodelet::Nodelet">
     <description>
@@ -38,6 +53,6 @@
     <description>
     Nodelet to make pointcloud from croped rgb and depth image which is detected by yolo sdarknet.
     </description>
-  </class>
+  </class> -->
 
 </library>
