@@ -15,6 +15,13 @@
     </description>
   </class>
 
+    <class name="bounding_pointcloud/FeatureExtractor"
+     type="bounding_pointcloud::FeatureExtractor"
+     base_class_type="nodelet::Nodelet">
+    <description>
+    </description>
+  </class>
+
 
     <!-- <class name="bounding_pointcloud/point_cloud_xyzrgb"
 	 type="bounding_pointcloud::PointCloudXyzrgbNodelet"

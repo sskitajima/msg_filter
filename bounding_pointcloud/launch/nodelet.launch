@@ -26,6 +26,11 @@
         args="load bounding_pointcloud/plugin_nodelet_listener $(arg manager_name)" >
     <remap from="chatter" to="chatter_alt" />
   </node>   -->
+
+    <node pkg="nodelet" type="nodelet" name="FeatureExtractor"
+        args="load bounding_pointcloud/FeatureExtractor $(arg manager_name)" >
+    <remap from="chatter" to="chatter_alt" />
+  </node>  
  
 
     <node pkg="nodelet" type="nodelet" name="PointsListener"

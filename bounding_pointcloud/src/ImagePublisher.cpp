@@ -23,31 +23,31 @@ namespace bounding_pointcloud
 
 // キー入力の受けつけ
 // https://hotnews8.net/programming/tricky-code/c-code03
-int kbhit(void)
-{
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
+// int kbhit(void)
+// {
+//     struct termios oldt, newt;
+//     int ch;
+//     int oldf;
 
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+//     tcgetattr(STDIN_FILENO, &oldt);
+//     newt = oldt;
+//     newt.c_lflag &= ~(ICANON | ECHO);
+//     tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+//     oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+//     fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
 
-    ch = getchar();
+//     ch = getchar();
 
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
+//     tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+//     fcntl(STDIN_FILENO, F_SETFL, oldf);
 
-    if (ch != EOF) {
-        ungetc(ch, stdin);
-        return 1;
-    }
+//     if (ch != EOF) {
+//         ungetc(ch, stdin);
+//         return 1;
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
 
 
@@ -57,20 +57,24 @@ class imagePublisher
 private:
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
-    image_transport::Publisher pub_img;
+    image_transport::Publisher pub_img_rgb, pub_img_depth;
 
     const char* pub_image_dir = "/home/kitajima/workspace/save_image/";
+    const char* pub_depth_dir = "/home/kitajima/workspace/save_image_depth/";
     const char* image_name = "keyframe";
+    const float hz_rate = 1.0;
     
-    int num_max = 39;
+    int num_max = 391;
     int num_min = 0;
     int count=0;
+    int count_seq=0;
 
 public:
     imagePublisher()
     : it_(nh_)
     {
-        pub_img = it_.advertise("/keyframe", 10);
+        pub_img_rgb = it_.advertise("/keyframe/rgb", 10);
+        pub_img_depth = it_.advertise("/keyframe/depth", 10);
     }
 
     ~imagePublisher()
@@ -88,96 +92,57 @@ public:
 
     std_msgs::Header make_header()
     {
-        count++;
+        count_seq++;
         std_msgs::Header header;
         header.stamp = ros::Time::now();
         header.frame_id = "/openni_rgb_optical_frame";
-        header.seq = count;
+        header.seq = count_seq;
 
         return header;
     }
 
-    void test()
+    void publishLoop()
     {
-        while (1)
+        ros::Rate loop_rate(hz_rate);
+        while (ros::ok())
         {
-            cout << "入力: number  終了: -1" << endl;
-            int input;
-            cin >> input;
+            if (count==num_max) count=num_min;
 
-            cout << "input ; " << input << endl;
+            const std::string save_path_rgb = (boost::format("%s%s_%d.png") % pub_image_dir % image_name % count).str();
+            const std::string save_path_depth = (boost::format("%s%s_%d.png") % pub_depth_dir % image_name % count).str();
 
-            if (input == -1)
-            {
-                cout << "quit" << endl;
-                break;
-            }
-            else if (num_min <= input && input <= num_max)
-            {
-                cout << "valid input" << endl;
-                const std::string save_path = (boost::format("%s%s_%d.png") % pub_image_dir % image_name % input).str();
+            cv::Mat img_rgb = cv::imread(save_path_rgb);
+            cv::Mat img_depth = cv::imread(save_path_depth, cv::IMREAD_GRAYSCALE);
 
-                cout << save_path << endl;
+            // cout << "img_depth: " << img_depth << endl; 
 
-                cv::Mat img = cv::imread(save_path);
-                cout << "imread" << endl;
-                cv_bridge::CvImage cv_image;
-                cv_image.header = make_header();
-                cv_image.encoding = sensor_msgs::image_encodings::TYPE_32FC3;
-                cv_image.image = img;
+            cv_bridge::CvImage cv_image_rgb, cv_image_depth;
+            std_msgs::Header header = make_header();
 
-                std::cout << "  dims: " << img.dims << ", depth(byte/channel):" << img.elemSize1()
-                          << ", channels: " << img.channels() << std::endl;
+            cv_image_rgb.header = header;
+            cv_image_rgb.encoding = sensor_msgs::image_encodings::BGR8;
+            cv_image_rgb.image = img_rgb;
 
-                pub_img.publish(cv_image.toImageMsg());
-            }
-            else
-            {
-                cout << "invalid input" << endl;
-                break;
-            }
+            cv_image_depth.header = header;
+            cv_image_depth.encoding = sensor_msgs::image_encodings::MONO8;
+            cv_image_depth.image = img_depth;
+            
 
-            // if(input == 0) cout << "zero" <<endl;
-            // else if(input == 1) cout << "one" << endl;
-            // else break;
+            // std::cout << "  dims: " << img_depth.dims << ", depth(byte/channel):" << img_depth.elemSize1()
+            //           << ", channels: " << img_depth.channels() << std::endl;
 
+            pub_img_rgb.publish(cv_image_rgb.toImageMsg());
+            pub_img_depth.publish(cv_image_depth.toImageMsg());
+
+            count++;
+            cout << "publish: " << save_path_rgb << endl;
+            cout << "publish: " << save_path_depth << endl;
             cout << endl;
+            // cout << "count: " << count << endl;
 
-            // if (kbhit())
-            // {
-            //     const char key = getchar();
-            //     printf("'%c'を押しました。\n", key);
-                
-            //     // int key_int = ctoi(key);
-            //     // cout << Cnum_min << " " << Cnum_max << endl; 
-            //     if(num_min <= key && key <= num_max){
-            //         const std::string save_path = (boost::format("%s%s_%s.png") % pub_image_dir % image_name % key).str();
-                    
-            //         cout << save_path << endl;
-
-            //         cv::Mat img = cv::imread(save_path);
-            //         cout << "imread" << endl;
-            //         cv_bridge::CvImage cv_image;
-            //         cv_image.header = make_header();                            
-            //         cv_image.encoding = sensor_msgs::image_encodings::TYPE_32FC3;
-            //         cv_image.image = img;    
-
-            //           std::cout << "  dims: " << img.dims << ", depth(byte/channel):" << img.elemSize1() \
-	        //                 << ", channels: " << img.channels() << std::endl;
-
-            //         // pub_img.publish(cv_ptr->toImageMsg());                       
-            //     }
-            //     else if(key == *"q")
-            //       break;
-            //     else
-            //     {
-            //         ROS_INFO("invalid number");
-            //         // break;
-            //     } 
-
-            // }
+            ros::spinOnce();
+            loop_rate.sleep();
         }
-
     }
 };
 }
@@ -187,6 +152,5 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "imageSaver_node");
     bounding_pointcloud::imagePublisher imagePublisher;
-    imagePublisher.test();
-    ros::spin();
+    imagePublisher.publishLoop();
 }
