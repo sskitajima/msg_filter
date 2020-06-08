@@ -153,7 +153,7 @@ void ImageSaver::imageCallback(const sensor_msgs::ImageConstPtr &img_msg)
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "imageSaver_node");
+    ros::init(argc, argv, "imagePublisher_node");
     bounding_pointcloud::ImageSaver imageSaver;
     ros::spin();
 }
