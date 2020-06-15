@@ -11,7 +11,11 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 
+#include <nlohmann/json.hpp>        // jsonを扱うライブラリ
+
+#include <fstream>
 #include <map>
+#include <set>
 #include <vector>
 
 using namespace std;
@@ -52,6 +56,109 @@ public:
     }
 };
 
+class BoundingBoxSaver
+{
+private:
+    vector<darknet_ros_msgs::BoundingBox> cur_detection, prev_detection; 
+    vector<vector<darknet_ros_msgs::BoundingBox>> result;
+
+    // multiset<int> cur_id;
+    // set<multiset<int>> detection_ids;
+
+public:
+    BoundingBoxSaver()
+    {
+    }
+
+    ~BoundingBoxSaver()
+    {
+        write_result();
+        write_result_json();
+    }
+
+    void save_detections(const darknet_ros_msgs::BoundingBoxes& msg)
+    {
+        for(unsigned i=0; i < msg.bounding_boxes.size(); i++)
+        {
+            cur_detection.push_back(msg.bounding_boxes[i]);
+            // cout << msg.bounding_boxes[i].id << endl;
+            // cur_id.insert(msg.bounding_boxes[i].id);
+        }
+
+        // detection_ids.insert(cur_id);
+        
+        if(cur_detection != prev_detection) result.push_back(cur_detection);
+
+        prev_detection = cur_detection;
+        cur_detection.clear();
+
+        cout << "num set detections: "  << result.size() << endl;
+    }
+
+    void write_result()
+    {
+
+        cout << "result size: " << result.size() << endl;
+        string path = "/home/kitajima/workspace/save_image_detection/detection_result.txt";
+        ofstream out_file;
+        out_file.open(path);
+        for(int i=0; i<result.size(); i++)
+        {
+            cout << "i " << i << endl;
+            out_file << "image num: " << i << endl;;
+            for(unsigned j=0; j<result[i].size(); j++)
+            {
+                darknet_ros_msgs::BoundingBox bbox = result[i][j];
+                out_file << "Class: " << bbox.Class << " prob: " << bbox.probability << " id: " << bbox.id << '\n';
+                out_file << "xmin: " << bbox.xmin << '\n';
+                out_file << "ymin: " << bbox.ymin << '\n';
+                out_file << "xmax: " << bbox.xmax << '\n';
+                out_file << "ymax: " << bbox.ymax << '\n';
+                out_file << endl;
+            }
+            out_file << endl;
+        }
+        out_file.close();
+    }
+
+    void write_result_json()
+    {
+        string path = "/home/kitajima/workspace/detection_result.json";
+
+        for(int i=0; i<result.size(); i++)
+        {
+            string path = "/home/kitajima/workspace/save_image_detection/detection_result_" + to_string(i) + ".json";
+
+            
+            string result_str = "{ \"detections\" : ";
+            string bbox_result_str = "[ ";
+            for(unsigned j=0; j<result[i].size(); j++)
+            {
+
+                darknet_ros_msgs::BoundingBox bbox = result[i][j];
+                string bbox_info_str = "{ \"Class\" : \""  + bbox.Class           + "\", "
+                                    + "\"prob\" : " + to_string(bbox.probability) + ", "
+                                    + "\"id\" : "   + to_string(bbox.id)          + ", "
+                                    + "\"xmin\" : " + to_string(bbox.xmin)        + ", "
+                                    + "\"ymin\" : " + to_string(bbox.ymin)        + ", "
+                                    + "\"xmax\" : " + to_string(bbox.xmax)        + ", "
+                                    + "\"ymax\" : " + to_string(bbox.ymax)        + "}"
+                                    ;
+
+                (j==0) ? bbox_result_str += bbox_info_str : bbox_result_str += ", " + bbox_info_str;                
+                    
+            }
+            bbox_result_str += " ]";
+            
+            result_str += bbox_result_str + "}";
+            nlohmann::json json_ = nlohmann::json::parse(result_str);
+            std::ofstream o(path);
+            o << std::setw(4) << json_ << std::endl;
+            o.close();
+        }
+    }
+};
+
 class DebugNode
 {
 private:
@@ -66,6 +173,8 @@ private:
 
     MySubscriber<bounding_pointcloud_msgs::CropImage> cropImg_sub;
     MySubscriber<sensor_msgs::PointCloud2> crop_points_sub;
+
+    BoundingBoxSaver bboxSaver;
 
     const char* img_sub1_topic_;
     const char* bbox_sub_topic_;
@@ -85,7 +194,7 @@ public:
       crop_points_sub(nh, "/points_croped/points")
     {
         // img_sub1 = nh.subscribe(img_sub1_topic_, 100, &DebugNode::img_sub1_callback, this);
-        // bbox_sub = nh.subscribe(bbox_sub_topic_, 100, &DebugNode::bbox_sub_callback, this);
+        bbox_sub = nh.subscribe(bbox_sub_topic_, 100, &DebugNode::bbox_sub_callback, this);
         // pc_sub = nh.subscribe(pc_sub_topic_, 100, &DebugNode::pc_sub_callback, this);
         // info_sub = nh.subscribe(info_sub_topic, 100, &DebugNode::info_sub_callback, this);
         // cropimg_sub = nh.subscribe(cropimg_sub_topic_, 100, &DebugNode::cropimg_sub_callback, this);
@@ -98,7 +207,6 @@ public:
 
     ~DebugNode()
     {
-
     }
 
     void img_sub1_callback(const sensor_msgs::Image& msg)
@@ -109,6 +217,7 @@ public:
     void bbox_sub_callback(const darknet_ros_msgs::BoundingBoxes& msg)
     {
         printHeader(msg.header, bbox_sub_topic_);
+        bboxSaver.save_detections(msg);
     }
 
     void pc_sub_callback(const sensor_msgs::PointCloud2& msg)
