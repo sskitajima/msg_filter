@@ -5,6 +5,7 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "darknet_ros_msgs/BoundingBoxes.h"
 #include "cv_bridge/cv_bridge.h"
+#include <image_transport/image_transport.h>
 
 #include "bounding_pointcloud_msgs/CropImage.h"
 
@@ -30,6 +31,20 @@ void printHeader(const std_msgs::Header &header, const char *topic_name)
     cout << "topic: " << topic_name << " count: " << topic_map[topic_name] << endl;
     std::cout << "header:" << header.stamp << " seq: " << header.seq << std::endl;
     std::cout << std::endl;
+}
+
+// https://answers.ros.org/question/60182/error-unable-to-convert-32fc1-image-to-bgr8-while-extracting-rbgd-data-from-a-bag/
+void depthToCV8UC1(const cv::Mat& float_img, cv::Mat& mono8_img){
+  //Process images
+  if(mono8_img.rows != float_img.rows || mono8_img.cols != float_img.cols){
+    mono8_img = cv::Mat(float_img.size(), CV_16UC1);}
+  cv::convertScaleAbs(float_img, mono8_img, 5000, 0.0);
+  //The following doesn't work due to NaNs
+  //double minVal, maxVal; 
+  //minMaxLoc(float_img, &minVal, &maxVal);
+  //ROS_DEBUG("Minimum/Maximum Depth in current image: %f/%f", minVal, maxVal);
+  //mono8_img = cv::Scalar(0);
+  //cv::line( mono8_img, cv::Point2i(10,10),cv::Point2i(200,100), cv::Scalar(255), 3, 8);
 }
 
 
@@ -170,6 +185,8 @@ private:
     ros::Subscriber info_sub;
     ros::Subscriber cropimg_sub;
 
+    image_transport::Subscriber depth_sub;
+
 
     MySubscriber<bounding_pointcloud_msgs::CropImage> cropImg_sub;
     MySubscriber<sensor_msgs::PointCloud2> crop_points_sub;
@@ -181,23 +198,29 @@ private:
     const char* pc_sub_topic_;
     const char* info_sub_topic_;
     const char* croping_sub_topic_;
+    const char* depth_sub_topic_;
 
 
 public:
-    DebugNode(const char* img_sub1_topic, const char* bbox_sub_topic, const char* pc_sub_topic, const char* info_sub_topic, const char* croping_sub_topic)
+    DebugNode(const char* img_sub1_topic, const char* bbox_sub_topic, const char* pc_sub_topic, const char* info_sub_topic, const char* croping_sub_topic, const char* depth_topic_name)
     : img_sub1_topic_(img_sub1_topic), 
       bbox_sub_topic_(bbox_sub_topic), 
       pc_sub_topic_(pc_sub_topic), 
       info_sub_topic_(info_sub_topic),
       croping_sub_topic_(croping_sub_topic),
       cropImg_sub(nh, croping_sub_topic),
-      crop_points_sub(nh, "/points_croped/points")
+      crop_points_sub(nh, "/points_croped/points"),
+      depth_sub_topic_(depth_topic_name)
     {
+        image_transport::ImageTransport it(nh);
+
         // img_sub1 = nh.subscribe(img_sub1_topic_, 100, &DebugNode::img_sub1_callback, this);
         bbox_sub = nh.subscribe(bbox_sub_topic_, 100, &DebugNode::bbox_sub_callback, this);
         // pc_sub = nh.subscribe(pc_sub_topic_, 100, &DebugNode::pc_sub_callback, this);
         // info_sub = nh.subscribe(info_sub_topic, 100, &DebugNode::info_sub_callback, this);
         // cropimg_sub = nh.subscribe(cropimg_sub_topic_, 100, &DebugNode::cropimg_sub_callback, this);
+        depth_sub = it.subscribe(depth_sub_topic_, 100, &DebugNode::depth_sub_callback, this);
+
 
         topic_map[img_sub1_topic_] = 0;
         topic_map[bbox_sub_topic_] = 0;
@@ -228,6 +251,31 @@ public:
     void info_sub_callback(const sensor_msgs::CameraInfo& msg)
     {
         printHeader(msg.header, info_sub_topic_);
+    }
+
+    void depth_sub_callback(const sensor_msgs::ImageConstPtr& depth_msg){
+        ROS_INFO("depth sub callback");
+        cv_bridge::CvImagePtr cv_ptr;
+        //Convert from the ROS image message to a CvImage suitable for working with OpenCV for processing
+        try
+        {
+            //Always copy, returning a mutable CvImage
+            //OpenCV expects color images to use BGR channel order.
+            cv_ptr = cv_bridge::toCvCopy(depth_msg);
+        }
+        catch (cv_bridge::Exception& e)
+        {
+            //if there is an error during conversion, display it
+            ROS_ERROR("tutorialROSOpenCV::main.cpp::cv_bridge exception: %s", e.what());
+            return;
+        }
+
+        //Copy the image.data to imageBuf.
+        cv::Mat depth_float_img = cv_ptr->image;
+        cv::Mat depth_mono8_img;
+        // std::cout << depth_float_img << std::endl;
+        depthToCV8UC1(depth_float_img, depth_mono8_img);
+        cv::imwrite("/home/kitajima/depth_100.png", depth_mono8_img);
     }
 
     void cropimg_sub_callback(const bounding_pointcloud_msgs::CropImage& img_msg)
@@ -267,6 +315,7 @@ int main(int argc, char** argv)
     const char* pc_topic_name = "/camera/republish/rgb/points";
     const char* info_topic_name = "/camera/rgb/camera_info";
     const char* croping_topic_name = "bounding_pointcloud_msgs/CropImage";
+    const char* depth_topic_name = "/camera/depth/image";
 
     // vector<const char*> topic_names{img_topic_name,
     //                                 bbox_topic_name,
@@ -274,7 +323,7 @@ int main(int argc, char** argv)
     //                                 info_topic_name
     //                                 }
 
-    DebugNode node(img_topic_name, bbox_topic_name, pc_topic_name, info_topic_name, croping_topic_name);
+    DebugNode node(img_topic_name, bbox_topic_name, pc_topic_name, info_topic_name, croping_topic_name, depth_topic_name);
 
     ros::spin();
 

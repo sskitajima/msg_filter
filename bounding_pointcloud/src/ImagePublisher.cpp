@@ -59,8 +59,8 @@ private:
     image_transport::ImageTransport it_;
     image_transport::Publisher pub_img_rgb, pub_img_depth;
 
-    const char* pub_image_dir = "/home/kitajima/workspace/save_image/";
-    const char* pub_depth_dir = "/home/kitajima/workspace/save_image_depth/";
+    const char* pub_image_dir = "/home/kitajima/workspace/Data/save_image/";
+    const char* pub_depth_dir = "/home/kitajima/workspace/Data/save_image_depth/";
     const char* image_name = "keyframe";
     const float hz_rate = 1.0;
     
@@ -73,8 +73,8 @@ public:
     imagePublisher()
     : it_(nh_)
     {
-        pub_img_rgb = it_.advertise("/keyframe/rgb", 10);
-        pub_img_depth = it_.advertise("/keyframe/depth", 10);
+        pub_img_rgb = it_.advertise("/camera/rgb/image_color", 10);
+        pub_img_depth = it_.advertise("/camera/depth/image", 10);
     }
 
     ~imagePublisher()
@@ -108,11 +108,18 @@ public:
         {
             if (count==num_max) count=num_min;
 
-            const std::string save_path_rgb = (boost::format("%s%s_%d.png") % pub_image_dir % image_name % count).str();
-            const std::string save_path_depth = (boost::format("%s%s_%d.png") % pub_depth_dir % image_name % count).str();
+            const std::string save_path_rgb = (boost::format("%s%s_%03d.png") % pub_image_dir % image_name % count).str();
+            const std::string save_path_depth = (boost::format("%s%s_%03d.png") % pub_depth_dir % image_name % count).str();
+            
+            // const std::string save_path_rgb = (boost::format("%s%03d.png") % pub_image_dir % count).str();
+            // const std::string save_path_depth = (boost::format("%s%03d.png") % pub_depth_dir  % count).str();
 
-            cv::Mat img_rgb = cv::imread(save_path_rgb);
-            cv::Mat img_depth = cv::imread(save_path_depth, cv::IMREAD_GRAYSCALE);
+            cv::Mat img_rgb = cv::imread(save_path_rgb,  cv::IMREAD_UNCHANGED);
+            // cv::Mat img_depth = cv::imread(save_path_depth, cv::IMREAD_GRAYSCALE);
+            cv::Mat img_depth = cv::imread(save_path_depth,  cv::IMREAD_UNCHANGED);
+            cv::Mat img_32FC1;
+            img_depth.convertTo(img_32FC1, CV_32FC1, 1/5000.0);
+
 
             // cout << "img_depth: " << img_depth << endl; 
 
@@ -124,8 +131,9 @@ public:
             cv_image_rgb.image = img_rgb;
 
             cv_image_depth.header = header;
-            cv_image_depth.encoding = sensor_msgs::image_encodings::MONO8;
-            cv_image_depth.image = img_depth;
+            cv_image_depth.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
+            // cv_image_depth.encoding = sensor_msgs::image_encodings::BGR8;
+            cv_image_depth.image = img_32FC1;
             
 
             // std::cout << "  dims: " << img_depth.dims << ", depth(byte/channel):" << img_depth.elemSize1()
